@@ -193,28 +193,28 @@ export default function App() {
               </div>
             </div>
             
-            <div>
+            {/* <div>
               <h3 className="font-semibold text-lg mb-4">Quick Links</h3>
               <ul className="space-y-2 text-gray-400">
                 <li><a href="/course" className="hover:text-white transition-colors">Courses</a></li>
                 <li><a href="/quiz" className="hover:text-white transition-colors">Certification</a></li>
                 <li><a href="#" className="hover:text-white transition-colors">Support</a></li>
               </ul>
-            </div>
+            </div> */}
             
-            <div>
+            {/* <div>
               <h3 className="font-semibold text-lg mb-4">Contact</h3>
               <ul className="space-y-2 text-gray-400">
                 <li>support@npci-learning.com</li>
                 <li>+91 98765 43210</li>
                 <li>Mumbai, India</li>
               </ul>
-            </div>
+            </div> */}
           </div>
           
-          <div className="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400">
+          {/* <div className="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400">
             <p>&copy; 2024 NPCI Learning Platform. All rights reserved.</p>
-          </div>
+          </div> */}
         </div>
       </footer>
     </div>

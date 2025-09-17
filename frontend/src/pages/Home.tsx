@@ -90,7 +90,7 @@ export default function Home() {
 
             {/* Login Form */}
             <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-8 max-w-md mx-auto border border-white/20">
-              <h2 className="text-2xl font-semibold text-white mb-6">Get Started Today</h2>
+              <h2 className="text-2xl font-semibold text-white mb-6">Please login with registered mail id</h2>
               <EmailForm onSent={(email) => { localStorage.setItem('email', email); setSentEmail(email); navigate('/verify') }} />
             </div>
           </div>

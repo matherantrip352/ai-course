@@ -257,41 +257,132 @@ async def quiz_start(_: QuizStartRequest, token: HTTPAuthorizationCredentials | 
     return items
 
 
+# @router.post("/quiz/submit", response_model=QuizResult)
+# async def quiz_submit(data: QuizSubmitRequest, token: HTTPAuthorizationCredentials | None = Depends(auth_scheme), session: AsyncSession = Depends(get_session)):
+#     email = require_auth(token)
+#     qids = [a.question_id for a in data.answers]
+#     res = await session.execute(select(Question).where(Question.id.in_(qids)))
+#     qmap = {q.id: q for q in res.scalars().all()}
+
+#     total = len(data.answers)
+#     correct = 0
+#     attempt = QuizAttempt(email=email, total_questions=total, correct_answers=0, passed=False)
+#     session.add(attempt)
+#     await session.flush()
+
+#     for ans in data.answers:
+#         q = qmap.get(ans.question_id)
+#         if not q:
+#             continue
+#         sel = ans.selected_index  # could be 0-3 or 'A'-'D'
+#         if isinstance(sel, str):
+#             letter = sel.strip().upper()
+#             sel_idx = {"A": 0, "B": 1, "C": 2, "D": 3}.get(letter, -1)
+#         else:
+#             sel_idx = int(sel)
+        
+#         # Fix: Handle correct answer properly - it should be an integer (0-3)
+#         correct_answer = q.correct
+#         if isinstance(correct_answer, str):
+#             correct_letter = correct_answer.strip().upper()
+#             correct_idx = {"A": 0, "B": 1, "C": 2, "D": 3}.get(correct_letter, -1)
+#         else:
+#             correct_idx = int(correct_answer)
+            
+#         is_correct = sel_idx == correct_idx
+#         if is_correct:
+#             correct += 1
+#         session.add(
+#             AttemptAnswer(
+#                 attempt_id=attempt.id,
+#                 question_id=q.id,
+#                 selected_index=sel_idx,
+#                 is_correct=is_correct,
+#             )
+#         )
+
+#     passed = (correct / max(total, 1)) >= 0.8
+#     attempt.correct_answers = correct
+#     attempt.passed = passed
+#     await session.commit()
+
+#     return QuizResult(
+#         total_questions=total,
+#         correct_answers=correct,
+#         passed=passed,
+#         percentage=round(100.0 * correct / max(total, 1), 2),
+#     )
+
 @router.post("/quiz/submit", response_model=QuizResult)
 async def quiz_submit(data: QuizSubmitRequest, token: HTTPAuthorizationCredentials | None = Depends(auth_scheme), session: AsyncSession = Depends(get_session)):
     email = require_auth(token)
+    print(f"Email from token: {email}")
+    
     qids = [a.question_id for a in data.answers]
+    print(f"Question IDs: {qids}")
+    
     res = await session.execute(select(Question).where(Question.id.in_(qids)))
+    print(f"Database query result: {res}")
+    
     qmap = {q.id: q for q in res.scalars().all()}
-
+    print(f"Question map: {qmap}")
+    
     total = len(data.answers)
+    print(f"Total questions: {total}")
+    
     correct = 0
+    print(f"Initial correct count: {correct}")
+    
     attempt = QuizAttempt(email=email, total_questions=total, correct_answers=0, passed=False)
+    print(f"Created QuizAttempt: {attempt.__dict__}")
+    
     session.add(attempt)
+    print(f"Added attempt to session")
+    
     await session.flush()
-
+    print(f"Flushed session, attempt ID: {attempt.id}")
+    
     for ans in data.answers:
+        print(f"Processing answer: {ans.__dict__}")
+        
         q = qmap.get(ans.question_id)
+        print(f"Question for ID {ans.question_id}: {q.__dict__ if q else None}")
+        
         if not q:
+            print(f"No question found for ID {ans.question_id}, skipping")
             continue
-        sel = ans.selected_index  # could be 0-3 or 'A'-'D'
+        
+        sel = ans.selected_index
+        print(f"Selected index: {sel} (type: {type(sel)})")
+        
         if isinstance(sel, str):
             letter = sel.strip().upper()
+            print(f"Selected index is string, converted to: {letter}")
             sel_idx = {"A": 0, "B": 1, "C": 2, "D": 3}.get(letter, -1)
+            print(f"Converted string to index: {sel_idx}")
         else:
             sel_idx = int(sel)
+            print(f"Selected index as integer: {sel_idx}")
         
-        # Fix: Handle correct answer properly - it should be an integer (0-3)
         correct_answer = q.correct
+        print(f"Correct answer from DB: {correct_answer} (type: {type(correct_answer)})")
+        
         if isinstance(correct_answer, str):
             correct_letter = correct_answer.strip().upper()
+            print(f"Correct answer is string, converted to: {correct_letter}")
             correct_idx = {"A": 0, "B": 1, "C": 2, "D": 3}.get(correct_letter, -1)
+            print(f"Converted correct answer to index: {correct_idx}")
         else:
             correct_idx = int(correct_answer)
-            
+            print(f"Correct answer as integer: {correct_idx}")
+        
         is_correct = sel_idx == correct_idx
+        print(f"Comparing sel_idx ({sel_idx}) == correct_idx ({correct_idx}): {is_correct}")
+        
         if is_correct:
             correct += 1
+            print(f"Incremented correct count: {correct}")
+        
         session.add(
             AttemptAnswer(
                 attempt_id=attempt.id,
@@ -300,20 +391,29 @@ async def quiz_submit(data: QuizSubmitRequest, token: HTTPAuthorizationCredentia
                 is_correct=is_correct,
             )
         )
-
+        print(f"Added AttemptAnswer for question {q.id}, is_correct: {is_correct}")
+    
     passed = (correct / max(total, 1)) >= 0.8
+    print(f"Calculated passed: {passed} (correct: {correct}, total: {total})")
+    
     attempt.correct_answers = correct
+    print(f"Updated attempt.correct_answers: {correct}")
+    
     attempt.passed = passed
+    print(f"Updated attempt.passed: {passed}")
+    
     await session.commit()
-
-    return QuizResult(
+    print(f"Committed session")
+    
+    result = QuizResult(
         total_questions=total,
         correct_answers=correct,
         passed=passed,
         percentage=round(100.0 * correct / max(total, 1), 2),
     )
-
-
+    print(f"Returning QuizResult: {result.__dict__}")
+    
+    return result
 @router.get("/certificate", response_class=Response)
 async def download_certificate(token: HTTPAuthorizationCredentials | None = Depends(auth_scheme), session: AsyncSession = Depends(get_session)):
     email = require_auth(token)

@@ -111,7 +111,7 @@ export default function Course() {
                 </p>
               </div>
 
-              {/* Progress Bar */}
+              {/* Progress Bar
               <div className="mb-12">
                 <div className="bg-white/60 backdrop-blur-sm rounded-xl p-6 border border-white/20">
                   <div className="flex items-center justify-between mb-4">
@@ -122,7 +122,7 @@ export default function Course() {
                     <div className="bg-gradient-to-r from-blue-500 to-purple-600 h-2 rounded-full" style={{width: '0%'}}></div>
                   </div>
                 </div>
-              </div>
+              </div> */}
 
               {/* Modules Grid */}
               <div className="grid gap-6">
