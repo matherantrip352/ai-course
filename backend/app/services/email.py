@@ -48,10 +48,17 @@ async def create_and_send_otp(session: AsyncSession, email: str) -> None:
     rate_key = f"otp_rate:{email}"
     already = await redis.get(rate_key)
     if already:
-        raise ValueError("OTP recently sent. Please wait a minute.")
+        raise ValueError("OTP recently sent. Please wait 30 seconds before requesting another.")
 
     code = generate_otp_code()
     expires_at = datetime.now(timezone.utc) + timedelta(minutes=OTP_TTL_MINUTES)
+    # Invalidate any existing non-consumed OTPs for this email
+    await session.execute(
+        update(EmailOTP)
+        .where(EmailOTP.email == email)
+        .where(EmailOTP.consumed == False)
+        .values(consumed=True)
+    )
 
     otp = EmailOTP(email=email, code=code, expires_at=expires_at, consumed=False)
     session.add(otp)
@@ -59,12 +66,21 @@ async def create_and_send_otp(session: AsyncSession, email: str) -> None:
 
     await send_email(
         to_email=email,
-        subject="Your AI Mini Course OTP",
-        body=f"Your OTP is {code}. It expires in {OTP_TTL_MINUTES} minutes.",
+        subject="Your NPCI Learning Platform OTP",
+        body=f"""Hello,
+
+Your verification code for NPCI Learning Platform is: {code}
+
+This code will expire in {OTP_TTL_MINUTES} minutes.
+
+If you didn't request this code, please ignore this email.
+
+Best regards,
+NPCI Learning Platform Team""",
     )
 
-    # Set 60s rate limit window
-    await redis.set(rate_key, "1", ex=60)
+    # Set 30s rate limit window for resend
+    await redis.set(rate_key, "1", ex=30)
 
 
 async def verify_otp(session: AsyncSession, email: str, code: str) -> bool:

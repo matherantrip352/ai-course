@@ -1,34 +1,3 @@
-// export default function Result() {
-//   const result = JSON.parse(localStorage.getItem('last_result') || '{}')
-//   const email = localStorage.getItem('email')
-//   const passed = !!result.passed
-
-//   return (
-//     <div className="max-w-md mx-auto text-center">
-//       <h2 className="text-xl font-semibold mb-2">Your Result</h2>
-//       <p className="text-gray-700 mb-4">Score: {result.correct_answers}/{result.total_questions} ({result.percentage}%)</p>
-//       {passed ? (
-//         <div className="bg-green-50 border border-green-200 text-green-800 rounded p-4 mb-4">Congratulations! You passed.</div>
-//       ) : (
-//         <div className="bg-red-50 border border-red-200 text-red-800 rounded p-4 mb-4">You didn’t pass. Please reattempt the test.</div>
-//       )}
-//       {passed ? (
-//         <a
-//           href={`http://127.0.0.1:8080/api/certificate?email=${encodeURIComponent(email || '')}`}
-//           target="_blank"
-//           className="inline-block bg-blue-600 text-white px-4 py-2 rounded"
-//         >
-//           Download Certificate
-//         </a>
-//       ) : (
-//         <a href="/quiz" className="inline-block bg-blue-600 text-white px-4 py-2 rounded">Reattempt Quiz</a>
-//       )}
-//     </div>
-//   )
-// }
-
-
-
 import { useState } from 'react'
 
 export default function Result() {
@@ -50,9 +19,9 @@ export default function Result() {
       case 'linkedin':
         url = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}&summary=${encodeURIComponent(shareText)}`
         break
-      case 'facebook':
-        url = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}&quote=${encodeURIComponent(shareText)}`
-        break
+      // case 'facebook':
+      //   url = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}&quote=${encodeURIComponent(shareText)}`
+        // break
       case 'whatsapp':
         url = `https://wa.me/?text=${encodeURIComponent(shareText + ' ' + shareUrl)}`
         break
@@ -71,7 +40,7 @@ export default function Result() {
     <div 
       className="min-h-screen bg-gradient-to-br from-blue-900 via-purple-900 to-pink-800"
       style={{
-        backgroundImage: 'url(https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=2070&auto=format&fit=crop)',
+        backgroundImage: 'url(https://unsplash.com/photos/love-to-learn-pencil-signage-on-wall-near-walking-man-WE_Kv_ZB1l0&auto=format&fit=crop)',
         backgroundSize: 'cover',
         backgroundPosition: 'center',
         backgroundBlendMode: 'overlay'
@@ -164,6 +133,14 @@ export default function Result() {
                   <a
                     href={`http://127.0.0.1:8080/api/certificate`}
                     target="_blank"
+                    onClick={(e) => {
+                      e.preventDefault()
+                      // Use api instance to include auth headers
+                      const token = localStorage.getItem('token')
+                      if (token) {
+                        window.open(`http://127.0.0.1:8080/api/certificate?token=${token}`, '_blank')
+                      }
+                    }}
                     className="inline-flex items-center justify-center w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-4 px-8 rounded-2xl font-bold text-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-lg hover:shadow-blue-500/25 hover:scale-105"
                   >
                     <svg className="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -208,7 +185,7 @@ export default function Result() {
                             LinkedIn
                           </button>
                           
-                          <button
+                          {/* <button
                             onClick={() => shareToSocial('facebook')}
                             className="flex items-center justify-center p-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors"
                           >
@@ -216,7 +193,7 @@ export default function Result() {
                               <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
                             </svg>
                             Facebook
-                          </button>
+                          </button> */}
                           
                           <button
                             onClick={() => shareToSocial('whatsapp')}

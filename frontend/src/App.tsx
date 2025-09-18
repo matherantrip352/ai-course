@@ -70,6 +70,16 @@ export default function App() {
     const fullName = localStorage.getItem('full_name')
     if (email) {
       setUser({ email, fullName: fullName || undefined })
+      // Redirect logged-in users from / or /login to /home
+      if (location.pathname === '/' || location.pathname === '/login') {
+        // navigate('/Home');
+        navigate('/profile')
+      }
+
+    }
+    else if (location.pathname !== '/' && location.pathname !== '/login') {
+      // Redirect non-logged-in users to / if trying to access protected routes
+      navigate('/');
     }
   }, [location.pathname])
 
@@ -79,13 +89,14 @@ export default function App() {
     navigate('/')
   }
 
-  const isPublicRoute = location.pathname === '/' || location.pathname === '/verify'
+  const isPublicRoute = location.pathname === '/' || location.pathname === '/login'
 
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900">
       <header className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-gray-200 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
-          <Link to="/" className="flex items-center space-x-2">
+          <Link to={user ? '/home' : '/'} // Logo links to /home for logged-in users, / for others
+           className="flex items-center space-x-2">
             <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
               <span className="text-white font-bold text-sm">AI</span>
             </div>
@@ -105,7 +116,7 @@ export default function App() {
                 >
                   Course
                 </Link>
-                <Link 
+                {/* <Link 
                   className={`px-3 py-2 rounded-lg font-medium transition-colors ${
                     location.pathname.startsWith('/quiz') 
                       ? 'text-blue-600 bg-blue-50' 
@@ -114,7 +125,7 @@ export default function App() {
                   to="/quiz"
                 >
                   Quiz
-                </Link>
+                </Link> */}
               </>
             )}
           </nav>
@@ -212,9 +223,9 @@ export default function App() {
             </div> */}
           </div>
           
-          {/* <div className="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400">
+          <div className="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400">
             <p>&copy; 2024 NPCI Learning Platform. All rights reserved.</p>
-          </div> */}
+          </div>
         </div>
       </footer>
     </div>

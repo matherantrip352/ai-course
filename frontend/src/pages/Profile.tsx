@@ -22,7 +22,7 @@ export default function Profile() {
       .then(r => {
         if (r.data?.has_name && r.data?.full_name) {
           localStorage.setItem('full_name', r.data.full_name)
-          navigate('/course')
+          navigate('/Home')
         }
       })
       .catch(err => {
@@ -55,7 +55,7 @@ export default function Profile() {
     try {
       await api.post(`/profile/update-name`, { email, full_name: fullName.trim() })
       localStorage.setItem('full_name', fullName.trim())
-      navigate('/course')
+      navigate('/Home')
     } catch (err: any) {
       setError(err?.response?.data?.detail || 'Failed to save name')
     } finally {
