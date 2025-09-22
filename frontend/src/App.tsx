@@ -96,11 +96,16 @@ export default function App() {
       <header className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-gray-200 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
           <Link to={user ? '/home' : '/'} // Logo links to /home for logged-in users, / for others
-           className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-sm">AI</span>
+           className="flex items-center space-x-3">
+            <div className="w-25 h-15 rounded-xl bg-gradient-to-br from-blue-500  flex items-center justify-center shadow-md">
+              {/* <span className="text-white font-bold text-sm">AI</span> */}
+              <img 
+                src="/logos/NPCI-Logo-2.png" 
+                alt="NPCI Logo" 
+                className="w-32 h-10 object-contain"
+              />
             </div>
-            <span className="font-bold text-xl text-gray-900">NPCI Learning</span>
+            <span className="font-bold text-xl text-gray-900">Learning</span>
           </Link>
           
           <nav className="hidden md:flex items-center space-x-8">

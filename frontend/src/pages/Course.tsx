@@ -1,35 +1,4 @@
-// import { useEffect, useState } from 'react'
-// import axios from 'axios'
-// import { useNavigate } from 'react-router-dom'
 
-// const API = 'http://127.0.0.1:8080/api'
-
-// export default function Course() {
-//   const [modules, setModules] = useState<any[]>([])
-//   const navigate = useNavigate()
-
-//   useEffect(() => {
-//     axios.get(`${API}/modules`).then(r => setModules(r.data))
-//   }, [])
-
-//   return (
-//     <div>
-//       <h2 className="text-xl font-semibold mb-4">Course Modules</h2>
-//       <div className="grid gap-4">
-//         {modules.map(m => (
-//           <div key={m.id} className="border rounded p-4 bg-white">
-//             <div className="font-medium">{m.title}</div>
-//             {m.id === 4 ? (
-//               <button onClick={() => navigate('/quiz')} className="mt-3 bg-green-600 text-white px-3 py-2 rounded">Start Quiz</button>
-//             ) : (
-//               <a href={`https://example.com/module/${m.id}`} target="_blank" className="text-blue-600 text-sm">Open</a>
-//             )}
-//           </div>
-//         ))}
-//       </div>
-//     </div>
-//   )
-// }
 
 
 

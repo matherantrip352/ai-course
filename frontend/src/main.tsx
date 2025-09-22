@@ -8,7 +8,7 @@ import Profile from './pages/Profile'
 import Course from './pages/Course'
 import Quiz from './pages/Quiz'
 import Result from './pages/Result'
-import Login from './pages/login'
+import Login from './pages/Login'
 
 const router = createBrowserRouter([
   {

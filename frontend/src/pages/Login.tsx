@@ -98,12 +98,32 @@ export default function Login() {
       }}
     >
       <div className="absolute inset-0 bg-black/40"></div>
-      <div className="relative z-10 flex items-center justify-center min-h-screen px-4">
+      <div className="lanes relative z-10 flex items-center justify-center min-h-screen px-4">
         <div className="max-w-md mx-auto">
           <div className="bg-white/95 backdrop-blur-sm rounded-3xl shadow-2xl p-8 border border-white/20">
             <div className="text-center mb-8">
-              <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                <span className="text-white font-bold text-2xl">AI</span>
+              {/* Logo Row */}
+              <div className="flex items-center justify-center gap-4 mb-4">
+                {/* NPCI Logo */}
+                <img
+                  src="/logos/NPCI-Logo.png"
+                  alt="NPCI Logo"
+                  className="w-45 h-24 object-contain"
+                />
+
+                {/* Handshake Symbol */}
+                {/* <img
+                  src="/logos/handshake.png"
+                  alt="Handshake"
+                  className="w-10 h-10 object-contain"
+                /> */}
+
+                {/* OpenAI Logo */}
+                {/* <img
+                  src="/logos/openai.png"
+                  alt="OpenAI Logo"
+                  className="w-40 h-24 object-contain"
+                /> */}
               </div>
               <h1 className="text-3xl font-bold text-gray-900 mb-2">Welcome Back</h1>
               <p className="text-gray-600">Sign in to access your AI learning journey</p>
