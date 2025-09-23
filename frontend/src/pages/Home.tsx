@@ -1,5 +1,4 @@
 
-
 // Home.tsx
 import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
@@ -77,7 +76,7 @@ export default function Home() {
   // Logged-in user's dashboard
   return (
     <div
-      className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100"
+      className="relative min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100"
       style={{
         backgroundImage:
           'url(https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=2070&auto=format&fit=crop)',
@@ -89,6 +88,7 @@ export default function Home() {
       <div className="absolute inset-0 bg-white/80"></div>
       <div className="relative z-10 px-4 py-8">
         <div className="max-w-7xl mx-auto">
+      
           {!selectedModule ? (
             <>
               {/* Header */}
@@ -147,10 +147,24 @@ export default function Home() {
                               <span>{course.duration}</span>
                             </div>
                             <Link
-                              to="/course" // Navigate to /course
-                              className="block w-full bg-gray-900 text-white py-2 px-4 rounded-lg hover:bg-gray-800 transition-colors duration-200 text-center hover:bg-blue-300 hover:text-black"
+                              to="/course"
+                              className="group relative inline-flex w-full sm:w-auto items-center justify-center gap-2
+                                        rounded-xl px-6 py-3 font-semibold text-white
+                                        bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500
+                                        hover:from-indigo-400 hover:via-purple-400 hover:to-pink-400
+                                        shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/40
+                                        transition-all duration-300 active:scale-95
+                                        focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-purple-400"
                             >
-                              Start Learning
+                              <span>Start Learning</span>
+                              <svg
+                                className="w-4 h-4 translate-x-0 transition-transform duration-300 group-hover:translate-x-1"
+                                viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                                strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"
+                              >
+                                <path d="M13.5 4.5l6 6-6 6" />
+                                <path d="M3 12h16.5" />
+                              </svg>
                             </Link>
                           </div>
                         </div>
@@ -159,13 +173,10 @@ export default function Home() {
                   </div>
                 </div>
               </div>
-
-            
             </>
           ) : (
             /* Module Content View */
-            <div className="max-w-4xl mx-auto">
-            </div>
+            <div className="max-w-4xl mx-auto"></div>
           )}
         </div>
       </div>

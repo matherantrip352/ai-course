@@ -1,29 +1,3 @@
-// import { Outlet, Link, useLocation } from 'react-router-dom'
-
-// export default function App() {
-//   const location = useLocation()
-//   return (
-//     <div className="min-h-screen bg-gray-50 text-gray-900">
-//       <header className="sticky top-0 z-10 bg-white/80 backdrop-blur border-b">
-//         <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
-//           <Link to="/" className="font-semibold">AI Mini Course</Link>
-//           <nav className="text-sm space-x-4">
-//             <Link className={linkClass(location.pathname === '/')} to="/">Home</Link>
-//             <Link className={linkClass(location.pathname.startsWith('/course'))} to="/course">Course</Link>
-//             <Link className={linkClass(location.pathname.startsWith('/quiz'))} to="/quiz">Quiz</Link>
-//           </nav>
-//         </div>
-//       </header>
-//       <main className="max-w-5xl mx-auto px-4 py-8">
-//         <Outlet />
-//       </main>
-//     </div>
-//   )
-// }
-
-// function linkClass(active: boolean) {
-//   return `px-2 py-1 rounded ${active ? 'text-blue-600' : 'text-gray-600 hover:text-gray-900'}`
-// }
 
 
 
@@ -111,7 +85,7 @@ export default function App() {
           <nav className="hidden md:flex items-center space-x-8">
             {!isPublicRoute && (
               <>
-                <Link 
+                {/* <Link 
                   className={`px-3 py-2 rounded-lg font-medium transition-colors ${
                     location.pathname.startsWith('/course') 
                       ? 'text-blue-600 bg-blue-50' 
@@ -120,7 +94,7 @@ export default function App() {
                   to="/course"
                 >
                   Course
-                </Link>
+                </Link> */}
                 {/* <Link 
                   className={`px-3 py-2 rounded-lg font-medium transition-colors ${
                     location.pathname.startsWith('/quiz') 

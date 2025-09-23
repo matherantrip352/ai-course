@@ -1,42 +1,49 @@
-from pydantic_settings import BaseSettings
 
+
+from pydantic import Field
+from pydantic_settings import BaseSettings, SettingsConfigDict
+from pathlib import Path
+from dotenv import find_dotenv, load_dotenv
+load_dotenv(find_dotenv())  
 
 class Settings(BaseSettings):
-    app_name: str = "AI Mini Course"
+    # pydantic-settings v2 config
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
+
+    app_name: str 
 
     # Postgres
-    postgres_host: str = "localhost"
-    postgres_port: int = 5432
-    postgres_user: str = "postgres"
-    postgres_password: str = "postgres"
-    postgres_db: str = "gff"
-
+    postgres_host: str
+    postgres_port: int 
+    postgres_user: str 
+    postgres_password: str 
+    postgres_db: str 
     # Redis
-    redis_url: str = "redis://localhost:6379/0"
+    redis_url: str 
+
+    # Secrets
+    AES_ENCRYPTION_KEY: str 
 
     # SMTP
-    smtp_host: str = "smtp.gmail.com"
-    smtp_port: int = 587
-    smtp_username: str | None = "matherantrip352@gmail.com"
-    smtp_password: str | None = "osdqwvljlwwnmewf"
-    smtp_from_email: str | None = "matherantrip352@gmail.com"
+    smtp_host: str 
+    smtp_port: int 
+    smtp_username: str | None 
+    smtp_password: str | None 
+    smtp_from_email: str | None 
 
     # Certificate
-    certificate_bg_path: str | None = None
+    certificate_bg_path: str | None 
 
-    cors_origins: list[str] = [
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-        "http://localhost:5174",
-        "http://127.0.0.1:5174",
-    ]
+    # CORS (expects a JSON array in .env; see example below)
+    cors_origins: list[str] 
 
     # JWT
-    jwt_secret: str = "change-me-please"
-    jwt_exp_minutes: int = 60 * 24
-
-    class Config:
-        env_file = ".env"
+    jwt_secret: str 
+    jwt_exp_minutes: int 
 
     @property
     def database_url_async(self) -> str:
@@ -47,5 +54,3 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
-
-

@@ -3,230 +3,201 @@ from fastapi import APIRouter, Depends, HTTPException, Response
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from jose import jwt, JWTError
 
 from app.db.session import get_session
 from app.models.user import User
 from app.models.quiz import Question, QuizAttempt, AttemptAnswer
 from app.schemas.auth import EmailRequest, OTPVerifyRequest, ProfileUpdateRequest
 from app.schemas.quiz import QuestionOut, QuizStartRequest, QuizSubmitRequest, QuizResult
-from app.services.email import create_and_send_otp, verify_otp
 from app.services.certificate import generate_certificate_image
-from app.core.config import settings
-from jose import jwt, JWTError
 from app.services.quiz import get_random_questions
 from app.services.content import list_modules, get_module
+from app.core.config import settings
+from datetime import datetime, timedelta, timezone
 
+# NEW: use your AES helpers
+from app.services.PIIEncryption import encode as aes_encode, decode as aes_decode
 
 router = APIRouter()
 auth_scheme = HTTPBearer(auto_error=False)
 
+def _norm(email: str) -> str:
+    return email.strip().lower()
+
+def _enc(email_plain: str) -> str:
+    # deterministically encrypt normalized email for DB equality lookups
+    return aes_encode(_norm(email_plain), settings.AES_ENCRYPTION_KEY)
 
 def require_auth(token: HTTPAuthorizationCredentials | None) -> str:
     if not token:
         raise HTTPException(status_code=401, detail="Unauthorized")
     try:
         payload = jwt.decode(token.credentials, settings.jwt_secret, algorithms=["HS256"])
-        email = payload.get("email")
-        if not email:
+        enc_email = payload.get("sub")  # token carries encrypted email, not plaintext
+        if not enc_email:
             raise HTTPException(status_code=401, detail="Invalid token")
-        return str(email)
+        return str(enc_email)
     except JWTError:
         raise HTTPException(status_code=401, detail="Invalid token")
 
 
 @router.post("/auth/request-otp")
 async def request_otp(data: EmailRequest, session: AsyncSession = Depends(get_session)):
-    # Check if user exists in Postgres `users` table
-    res = await session.execute(select(User).where(User.email == data.email))
+    print (data )
+    # Accept plaintext at boundary, immediately encrypt for all internal use
+    enc_email = _enc(data.email)
+
+    # Check if encrypted email exists
+    res = await session.execute(select(User).where(User.email == enc_email))
     user = res.scalar_one_or_none()
     if user is None:
         raise HTTPException(status_code=404, detail="Email not registered")
 
-    await create_and_send_otp(session, data.email)
+    # Send OTP without passing plaintext around the app
+    # (the service will decrypt locally only to call SMTP)
+    from app.services.email import create_and_send_otp_for_enc
+    await create_and_send_otp_for_enc(session, enc_email)
+
+    # Return only an OK (or a challenge_id if you add one later)
     return {"ok": True}
 
 
 @router.post("/auth/verify-otp")
 async def verify_otp_route(data: OTPVerifyRequest, session: AsyncSession = Depends(get_session)):
-    ok = await verify_otp(session, data.email, data.code)
+    # Encrypt and verify without passing plaintext to the service
+    enc_email = _enc(data.email)
+    from app.services.email import verify_otp_for_enc
+    ok = await verify_otp_for_enc(session, enc_email, data.code)
     if not ok:
         raise HTTPException(status_code=400, detail="Invalid or expired OTP")
-    token = jwt.encode({"email": data.email}, settings.jwt_secret, algorithm="HS256")
-    return {"ok": True, "token": token}
+    now = datetime.now(timezone.utc)
+    exp = now + timedelta(minutes=settings.jwt_exp_minutes)  # e.g., 1440 for 24h
+    # Issue JWT with encrypted email as subject (no plaintext in token)
+    token = jwt.encode({"sub": enc_email,"type":"access","iat":int(now.timestamp()),"exp": int(exp.timestamp())}, settings.jwt_secret, algorithm="HS256")
+    print (token)
+    return {"ok": True, "token": token, "expires_in": int((exp - now).total_seconds())}
 
 
 @router.get("/profile")
-async def get_profile(token: HTTPAuthorizationCredentials | None = Depends(auth_scheme), session: AsyncSession = Depends(get_session)):
-    email = require_auth(token)
-    res = await session.execute(select(User).where(User.email == email))
+async def get_profile(
+    token: HTTPAuthorizationCredentials | None = Depends(auth_scheme),
+    session: AsyncSession = Depends(get_session),
+):
+    enc_email = require_auth(token)
+    res = await session.execute(select(User).where(User.email == enc_email))
     user = res.scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    return {"email": user.email, "full_name": user.full_name, "has_name": bool(user.full_name)}
+
+    # Do NOT return plaintext email. Optionally return a masked email:
+    # plain = aes_decode(enc_email, settings.AES_ENCRYPTION_KEY)
+    # masked = mask_email(plain)
+    return {"full_name": user.full_name, "has_name": bool(user.full_name)}
 
 
 @router.post("/profile/update-name")
-async def update_name(data: ProfileUpdateRequest, token: HTTPAuthorizationCredentials | None = Depends(auth_scheme), session: AsyncSession = Depends(get_session)):
-    email = require_auth(token)
-    if email != data.email:
-        raise HTTPException(status_code=403, detail="Forbidden")
-    res = await session.execute(select(User).where(User.email == data.email))
+async def update_name(
+    data: ProfileUpdateRequest,
+    token: HTTPAuthorizationCredentials | None = Depends(auth_scheme),
+    session: AsyncSession = Depends(get_session),
+):
+    enc_email = require_auth(token)
+    res = await session.execute(select(User).where(User.email == enc_email))
     user = res.scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+
     user.full_name = data.full_name
     await session.commit()
     return {"ok": True}
 
 
 @router.post("/quiz/start", response_model=list[QuestionOut])
-async def quiz_start(_: QuizStartRequest, token: HTTPAuthorizationCredentials | None = Depends(auth_scheme), session: AsyncSession = Depends(get_session)):
-    email = require_auth(token)
-    questions = await get_random_questions(session, 5) #no of question displayed for each user
-    items: list[QuestionOut] = []
-    for q in questions:
-        options = [q.option_a, q.option_b, q.option_c, q.option_d]
-        items.append(QuestionOut(id=q.id, text=q.text, options=options))
-    return items
+async def quiz_start(
+    _: QuizStartRequest,
+    token: HTTPAuthorizationCredentials | None = Depends(auth_scheme),
+    session: AsyncSession = Depends(get_session),
+):
+    _ = require_auth(token)
+    questions = await get_random_questions(session, 5)
+    return [QuestionOut(id=q.id, text=q.text, options=[q.option_a, q.option_b, q.option_c, q.option_d]) for q in questions]
 
 
 @router.post("/quiz/submit", response_model=QuizResult)
-async def quiz_submit(data: QuizSubmitRequest, token: HTTPAuthorizationCredentials | None = Depends(auth_scheme), session: AsyncSession = Depends(get_session)):
-    email = require_auth(token)
-    print(f"Email from token: {email}")
-    
+async def quiz_submit(
+    data: QuizSubmitRequest,
+    token: HTTPAuthorizationCredentials | None = Depends(auth_scheme),
+    session: AsyncSession = Depends(get_session),
+):
+    enc_email = require_auth(token)
+
     qids = [a.question_id for a in data.answers]
-    print(f"Question IDs: {qids}")
-    
     res = await session.execute(select(Question).where(Question.id.in_(qids)))
-    print(f"Database query result: {res}")
-    
     qmap = {q.id: q for q in res.scalars().all()}
-    print(f"Question map: {qmap}")
-    
+
     total = len(data.answers)
-    print(f"Total questions: {total}")
-    
     correct = 0
-    print(f"Initial correct count: {correct}")
-    
-    attempt = QuizAttempt(email=email, total_questions=total, correct_answers=0, passed=False)
-    print(f"Created QuizAttempt: {attempt.__dict__}")
-    
+
+    # Store encrypted email reference (no plaintext)
+    attempt = QuizAttempt(email=enc_email, total_questions=total, correct_answers=0, passed=False)
     session.add(attempt)
-    print(f"Added attempt to session")
-    
     await session.flush()
-    print(f"Flushed session, attempt ID: {attempt.id}")
-    
+
     for ans in data.answers:
-        print(f"Processing answer: {ans.__dict__}")
-        
         q = qmap.get(ans.question_id)
-        print(f"Question for ID {ans.question_id}: {q.__dict__ if q else None}")
-        
         if not q:
-            print(f"No question found for ID {ans.question_id}, skipping")
             continue
-        
+
         sel = ans.selected_index
-        print(f"Selected index: {sel} (type: {type(sel)})")
-        
-        if isinstance(sel, str):
-            letter = sel.strip().upper()
-            print(f"Selected index is string, converted to: {letter}")
-            sel_idx = {"A": 0, "B": 1, "C": 2, "D": 3}.get(letter, -1)
-            print(f"Converted string to index: {sel_idx}")
-        else:
-            sel_idx = int(sel)
-            print(f"Selected index as integer: {sel_idx}")
-        
+        sel_idx = {"A": 0, "B": 1, "C": 2, "D": 3}.get(str(sel).strip().upper(), int(sel) if isinstance(sel, int) else -1)
+
         correct_answer = q.correct
-        print(f"Correct answer from DB: {correct_answer} (type: {type(correct_answer)})")
-        
-        if isinstance(correct_answer, str):
-            correct_letter = correct_answer.strip().upper()
-            print(f"Correct answer is string, converted to: {correct_letter}")
-            correct_idx = {"A": 0, "B": 1, "C": 2, "D": 3}.get(correct_letter, -1)
-            print(f"Converted correct answer to index: {correct_idx}")
-        else:
-            correct_idx = int(correct_answer)
-            print(f"Correct answer as integer: {correct_idx}")
-        
+        correct_idx = {"A": 0, "B": 1, "C": 2, "D": 3}.get(str(correct_answer).strip().upper(), int(correct_answer) if isinstance(correct_answer, int) else -1)
+
         is_correct = sel_idx == correct_idx
-        print(f"Comparing sel_idx ({sel_idx}) == correct_idx ({correct_idx}): {is_correct}")
-        
         if is_correct:
             correct += 1
-            print(f"Incremented correct count: {correct}")
-        
-        session.add(
-            AttemptAnswer(
-                attempt_id=attempt.id,
-                question_id=q.id,
-                selected_index=sel_idx,
-                is_correct=is_correct,
-            )
-        )
-        print(f"Added AttemptAnswer for question {q.id}, is_correct: {is_correct}")
-    
+
+        session.add(AttemptAnswer(
+            attempt_id=attempt.id,
+            question_id=q.id,
+            selected_index=sel_idx,
+            is_correct=is_correct,
+        ))
+
     passed = (correct / max(total, 1)) >= 0.8
-    print(f"Calculated passed: {passed} (correct: {correct}, total: {total})")
-    
     attempt.correct_answers = correct
-    print(f"Updated attempt.correct_answers: {correct}")
-    
     attempt.passed = passed
-    print(f"Updated attempt.passed: {passed}")
-    
+
     await session.commit()
-    print(f"Committed session")
-    
-    result = QuizResult(
+
+    return QuizResult(
         total_questions=total,
         correct_answers=correct,
         passed=passed,
         percentage=round(100.0 * correct / max(total, 1), 2),
     )
-    print(f"Returning QuizResult: {result.__dict__}")
-    
-    return result
-# @router.get("/certificate", response_class=Response)
-# async def download_certificate(token: HTTPAuthorizationCredentials | None = Depends(auth_scheme), session: AsyncSession = Depends(get_session)):
-#     email = require_auth(token)
-#     res = await session.execute(select(User).where(User.email == email))
-#     user = res.scalar_one_or_none()
-#     if not user or not user.full_name:
-#         raise HTTPException(status_code=400, detail="Name not set")
-#     img_bytes = generate_certificate_image(user.full_name)
-#     headers = {"Content-Disposition": f"attachment; filename=certificate-{email}.png"}
-#     return Response(content=img_bytes, media_type="image/png", headers=headers)
 
 
 @router.get("/certificate", response_class=Response)
-async def download_certificate(token: str = None, token_header: HTTPAuthorizationCredentials | None = Depends(auth_scheme), session: AsyncSession = Depends(get_session)):
-    # Try to get email from token parameter or header
-    email = None
-    if token:
-        try:
-            payload = jwt.decode(token, settings.jwt_secret, algorithms=["HS256"])
-            email = payload.get("email")
-        except JWTError:
-            pass
-    
-    if not email and token_header:
-        email = require_auth(token_header)
-    
-    if not email:
-        raise HTTPException(status_code=401, detail="Unauthorized")
-    
-    res = await session.execute(select(User).where(User.email == email))
+async def download_certificate(
+    token: HTTPAuthorizationCredentials | None = Depends(auth_scheme),
+    session: AsyncSession = Depends(get_session),
+):
+    enc_email = require_auth(token)
+
+    res = await session.execute(select(User).where(User.email == enc_email))
     user = res.scalar_one_or_none()
     if not user or not user.full_name:
         raise HTTPException(status_code=400, detail="Name not set")
+
     img_bytes = generate_certificate_image(user.full_name)
-    headers = {"Content-Disposition": f"attachment; filename=certificate-{email}.png"}
+    # Avoid plaintext email in filename; use user id or short hash
+    filename = f"certificate-{user.id}.png"
+    headers = {"Content-Disposition": f"attachment; filename={filename}"}
     return Response(content=img_bytes, media_type="image/png", headers=headers)
+
 
 @router.get("/modules")
 async def modules(token: HTTPAuthorizationCredentials | None = Depends(auth_scheme)):

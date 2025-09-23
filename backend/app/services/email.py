@@ -42,30 +42,40 @@ async def send_email(to_email: str, subject: str, body: str) -> None:
     )
 
 
-async def create_and_send_otp(session: AsyncSession, email: str) -> None:
-    # Rate limit by Redis key
+#     # Set 30s rate limit window for resend
+#     await redis.set(rate_key, "1", ex=30)
+async def create_and_send_otp_for_enc(session: AsyncSession, enc_email: str) -> None:
+    """
+    Create OTP and send it to the decrypted address.
+    Stores encrypted email in DB and uses it for Redis rate limiting.
+    """
+    # Rate limit by encrypted email
     redis = await get_redis()
-    rate_key = f"otp_rate:{email}"
+    rate_key = f"otp_rate:{enc_email}"
     already = await redis.get(rate_key)
     if already:
         raise ValueError("OTP recently sent. Please wait 30 seconds before requesting another.")
 
     code = generate_otp_code()
     expires_at = datetime.now(timezone.utc) + timedelta(minutes=OTP_TTL_MINUTES)
-    # Invalidate any existing non-consumed OTPs for this email
+
+    # Invalidate any existing non-consumed OTPs for this encrypted email
     await session.execute(
         update(EmailOTP)
-        .where(EmailOTP.email == email)
-        .where(EmailOTP.consumed == False)
+        .where(EmailOTP.email == enc_email)
+        .where(EmailOTP.consumed == False)  # noqa: E712
         .values(consumed=True)
     )
 
-    otp = EmailOTP(email=email, code=code, expires_at=expires_at, consumed=False)
+    otp = EmailOTP(email=enc_email, code=code, expires_at=expires_at, consumed=False)
     session.add(otp)
     await session.commit()
 
+    # Decrypt only here to actually send the email
+    from app.services.PIIEncryption import decode as aes_decode
+    to_email = aes_decode(enc_email, settings.AES_ENCRYPTION_KEY)
     await send_email(
-        to_email=email,
+        to_email=to_email,
         subject="Your NPCI Learning Platform OTP",
         body=f"""Hello,
 
@@ -83,10 +93,15 @@ NPCI Learning Platform Team""",
     await redis.set(rate_key, "1", ex=30)
 
 
-async def verify_otp(session: AsyncSession, email: str, code: str) -> bool:
+
+
+async def verify_otp_for_enc(session: AsyncSession, enc_email: str, code: str) -> bool:
+    """
+    Verify OTP using encrypted email. No plaintext leaves this module.
+    """
     stmt = (
         select(EmailOTP)
-        .where(EmailOTP.email == email)
+        .where(EmailOTP.email == enc_email)
         .where(EmailOTP.code == code)
         .where(EmailOTP.consumed == False)  # noqa: E712
         .order_by(EmailOTP.id.desc())
@@ -104,6 +119,3 @@ async def verify_otp(session: AsyncSession, email: str, code: str) -> bool:
     )
     await session.commit()
     return True
-
-
-
